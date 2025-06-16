@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buat Tiket Baru - E-Letter Support</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .toast {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.5s, transform 0.5s;
+            transform: translateY(20px);
+        }
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto max-w-2xl p-4 md:p-8">
+        
+        <div class="flex justify-between items-center mb-8">
+             <div class="text-left">
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Sistem Tiket Bantuan</h1>
+                <p id="user-greeting" class="text-gray-500 mt-2">Selamat datang!</p>
+            </div>
+            <button id="logout-btn" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors">Logout</button>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-6">
+            <h2 class="text-2xl font-semibold text-gray-700 border-b pb-3">Buat Tiket Baru</h2>
+            <form id="create-ticket-form" class="space-y-4">
+                <div>
+                    <label for="ticket-title" class="block text-sm font-medium text-gray-600 mb-1">Judul Masalah</label>
+                    <input type="text" id="ticket-title" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: Surat Keterangan Usaha tidak terbit">
+                </div>
+                <div>
+                    <label for="ticket-chronology" class="block text-sm font-medium text-gray-600 mb-1">Kronologi / Deskripsi Lengkap Masalah</label>
+                    <textarea id="ticket-chronology" rows="5" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Jelaskan detail masalah yang Anda hadapi..."></textarea>
+                </div>
+                <button type="submit" id="submit-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors duration-300 shadow-sm flex items-center justify-center">
+                    Kirim Tiket
+                </button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-4 mt-8">
+             <h2 class="text-2xl font-semibold text-gray-700 border-b pb-3">Tiket Saya</h2>
+             <div id="my-tickets-list" class="space-y-4">
+                <p class="text-gray-500 text-center py-4">Memuat tiket Anda...</p>
+             </div>
+        </div>
+
+    </div>
+
+    <div id="toast-notification" class="toast fixed bottom-5 right-5 bg-green-500 text-white py-3 px-5 rounded-lg shadow-xl">
+        <p id="toast-message"></p>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, query, where, onSnapshot, getDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        
+        const firebaseConfig = {
+           apiKey: "AIzaSyDaNK01ZRqVRhlOlxthoZg4VzIX4GK0BGY",
+           authDomain: "slaitsm.firebaseapp.com",
+           projectId: "slaitsm",
+           storageBucket: "slaitsm.appspot.com",
+           messagingSenderId: "131813895205",
+           appId: "1:131813895205:web:e4cd2007cd23c5096ee3cc",
+           measurementId: "G-FZ3BPWVD93"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = firebaseConfig.appId;
+        
+        let currentUserId = null;
+
+        function showToast(message) {
+            const toast = document.getElementById('toast-notification');
+            const toastMessage = document.getElementById('toast-message');
+            toastMessage.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+
+        function fetchAndDisplayTickets(userId) {
+            const ticketsListContainer = document.getElementById('my-tickets-list');
+            const ticketsRef = collection(db, `artifacts/${appId}/public/data/tickets`);
+            const q = query(ticketsRef, where("userId", "==", userId));
+
+            onSnapshot(q, (querySnapshot) => {
+                ticketsListContainer.innerHTML = ''; 
+                if (querySnapshot.empty) {
+                    ticketsListContainer.innerHTML = `<p class="text-gray-500 text-center py-4">Anda belum membuat tiket.</p>`;
+                    return;
+                }
+                querySnapshot.forEach((doc) => {
+                    const ticket = doc.data();
+                    const ticketElement = document.createElement('div');
+                    ticketElement.className = 'border border-gray-200 p-4 rounded-lg';
+                    
+                    let statusClass = 'bg-blue-100 text-blue-800';
+                    if (ticket.status === 'Dalam Pengerjaan') {
+                        statusClass = 'bg-yellow-100 text-yellow-800';
+                    } else if (ticket.status === 'Selesai') {
+                        statusClass = 'bg-green-100 text-green-800';
+                    }
+                    
+                    ticketElement.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <h3 class="font-bold text-gray-800">${ticket.title}</h3>
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${statusClass}">${ticket.status}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2">${ticket.description}</p>
+                        <p class="text-xs text-gray-400 mt-3">ID: ${doc.id}</p>
+                    `;
+                    ticketsListContainer.appendChild(ticketElement);
+                });
+            });
+        }
+
+        async function handleCreateTicket(event) {
+            event.preventDefault();
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Mengirim...`;
+
+            const title = document.getElementById('ticket-title').value;
+            const description = document.getElementById('ticket-chronology').value;
+
+            try {
+                const collectionRef = collection(db, `artifacts/${appId}/public/data/tickets`);
+                
+                // PERBAIKAN: Gunakan new Date() untuk timestamp di dalam array
+                const initialChronology = {
+                    timestamp: new Date(), // Menggunakan waktu dari browser (client-side)
+                    action: `Tiket dibuat oleh pengguna.`,
+                    actor: 'User'
+                };
+
+                const docRef = await addDoc(collectionRef, {
+                    title: title,
+                    description: description,
+                    status: "Baru",
+                    userId: currentUserId,
+                    createdAt: serverTimestamp(), // Waktu server tetap digunakan di sini
+                    sla: 24,
+                    chronology: [initialChronology] // Masukkan objek kronologi ke dalam array
+                });
+                
+                showToast(`Tiket berhasil dibuat dengan ID: ${docRef.id}`);
+                document.getElementById('create-ticket-form').reset();
+
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                showToast("Gagal membuat tiket. Coba lagi.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Kirim Tiket';
+            }
+        }
+
+        // --- Logika Utama ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Pengguna sudah login
+                currentUserId = user.uid;
+                
+                // Ambil data nama dari Firestore
+                const userDocRef = doc(db, "users", user.uid);
+                const userDoc = await getDoc(userDocRef);
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    document.getElementById('user-greeting').textContent = `Selamat datang, ${userData.nama}!`;
+                }
+
+                // Aktifkan fungsionalitas halaman
+                document.getElementById('create-ticket-form').addEventListener('submit', handleCreateTicket);
+                fetchAndDisplayTickets(currentUserId);
+            } else {
+                // Jika tidak ada user, arahkan kembali ke halaman login
+                console.log('No user logged in. Redirecting to login page.');
+                window.location.href = 'login.html'; // Ganti dengan nama file login Anda
+            }
+        });
+
+        // Handler untuk tombol logout
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            signOut(auth).then(() => {
+                console.log('User signed out successfully.');
+                // onAuthStateChanged akan otomatis meng-handle pengalihan halaman
+            }).catch((error) => {
+                console.error('Sign out error', error);
+            });
+        });
+
+    </script>
+</body>
+</html>

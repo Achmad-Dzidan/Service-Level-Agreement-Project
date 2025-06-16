@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Dasbor Tiket Bantuan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .timer-display {
+            font-variant-numeric: tabular-nums;
+        }
+        .ticket-item.active {
+            background-color: #e0f2fe; /* Tailwind's sky-100 */
+            border-left-color: #0284c7; /* Tailwind's sky-600 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen flex flex-col">
+
+    <header class="bg-white shadow-md p-4 flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Dasbor Admin E-Letter Support</h1>
+            <p id="admin-greeting" class="text-gray-500 text-sm"></p>
+        </div>
+        <button id="logout-btn" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors">Logout</button>
+    </header>
+
+    <div class="flex-grow flex flex-col md:flex-row overflow-hidden">
+        
+        <!-- Kolom Kiri: Daftar Tiket Masuk -->
+        <div class="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-gray-200 flex flex-col">
+            <div class="p-4 border-b">
+                <h2 class="text-xl font-semibold">Tiket Masuk</h2>
+            </div>
+            <div id="ticket-list-container" class="overflow-y-auto flex-grow p-2 space-y-2">
+                <p class="text-gray-500 text-center p-4">Memuat tiket...</p>
+            </div>
+        </div>
+
+        <!-- Kolom Kanan: Detail dan Penanganan Tiket -->
+        <div id="ticket-detail-view" class="w-full md:w-2/3 lg:w-3/4 overflow-y-auto p-6 md:p-8">
+            <div id="placeholder-view" class="flex flex-col items-center justify-center h-full text-center text-gray-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 002 2h3a2 2 0 002-2v-3a2 2 0 00-2-2H5zM15 12a2 2 0 012-2h3a2 2 0 012 2v3a2 2 0 01-2 2h-3a2 2 0 01-2-2v-3z" />
+                </svg>
+                <h3 class="text-xl font-semibold">Pilih tiket dari daftar di sebelah kiri</h3>
+                <p>Detail tiket dan opsi penanganan akan muncul di sini.</p>
+            </div>
+
+            <div id="ticket-handling-section" class="hidden space-y-6">
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div class="flex justify-between items-center mb-3">
+                         <h2 class="text-xl font-semibold text-gray-700">Detail Tiket</h2>
+                         <div id="ticket-status-badge" class="font-semibold px-3 py-1 rounded-full inline-block text-sm"></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-500">Nomor Tiket</p>
+                            <p id="ticket-number" class="font-semibold text-gray-800 break-words"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Dibuat oleh (User ID)</p>
+                            <p id="ticket-user-id" class="font-semibold text-gray-800 break-words"></p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-sm text-gray-500">Judul Masalah</p>
+                            <p id="ticket-problem-title" class="font-semibold text-gray-800"></p>
+                        </div>
+                        <div class="md:col-span-2 text-center bg-white p-4 rounded-lg shadow-inner">
+                            <p class="text-sm text-gray-500 uppercase tracking-wider">Sisa Waktu SLA (24 Jam)</p>
+                            <div id="sla-timer" class="text-4xl md:text-5xl font-bold text-red-600 timer-display">--:--:--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <h2 class="text-xl font-semibold text-gray-700">Kronologi Penanganan & Troubleshooting</h2>
+                    <div id="chronology-log" class="w-full h-48 bg-gray-900 text-white font-mono text-sm rounded-lg p-4 overflow-y-auto space-y-2"></div>
+                    <div class="flex flex-col md:flex-row gap-2">
+                        <input type="text" id="action-input" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Catat tindakan yang dilakukan...">
+                        <button id="log-action-btn" class="bg-indigo-600 text-white font-semibold py-3 px-5 rounded-lg hover:bg-indigo-700 transition-colors">
+                            Catat Kronologi
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <h2 class="text-xl font-semibold text-gray-700">Tutup Tiket</h2>
+                    <div>
+                        <label for="solution-input" class="block text-sm font-medium text-gray-600 mb-1">Deskripsi Solusi Final</label>
+                        <textarea id="solution-input" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="Jelaskan solusi permanen untuk masalah ini..."></textarea>
+                    </div>
+                    <button id="resolve-ticket-btn" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 shadow-sm">
+                        Dokumentasikan Solusi & Tutup Tiket
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, query, onSnapshot, doc, updateDoc, arrayUnion, serverTimestamp, orderBy, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        const firebaseConfig = {
+           apiKey: "AIzaSyDaNK01ZRqVRhlOlxthoZg4VzIX4GK0BGY",
+           authDomain: "slaitsm.firebaseapp.com",
+           projectId: "slaitsm",
+           storageBucket: "slaitsm.appspot.com",
+           messagingSenderId: "131813895205",
+           appId: "1:131813895205:web:e4cd2007cd23c5096ee3cc",
+           measurementId: "G-FZ3BPWVD93"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = firebaseConfig.appId;
+
+        let activeTicketId = null;
+        let slaInterval = null;
+        let allTicketsData = new Map();
+
+        const ticketListContainer = document.getElementById('ticket-list-container');
+        const placeholderView = document.getElementById('placeholder-view');
+        const ticketHandlingSection = document.getElementById('ticket-handling-section');
+        
+        function formatTimestamp(timestamp) {
+            if (!timestamp || !timestamp.toDate) return 'N/A';
+            return timestamp.toDate().toLocaleString('id-ID', {
+                day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+        }
+        
+        function setStatusBadge(status) {
+            const badge = document.getElementById('ticket-status-badge');
+            badge.textContent = status;
+            badge.className = 'font-semibold px-3 py-1 rounded-full inline-block text-sm';
+            switch (status) {
+                case 'Baru': badge.classList.add('bg-blue-100', 'text-blue-800'); break;
+                case 'Dalam Pengerjaan': badge.classList.add('bg-yellow-100', 'text-yellow-800'); break;
+                case 'Selesai': badge.classList.add('bg-green-100', 'text-green-800'); break;
+                default: badge.classList.add('bg-gray-100', 'text-gray-800');
+            }
+        }
+        
+        function updateSlaTimer(createdAtTimestamp) {
+            clearInterval(slaInterval);
+            document.getElementById('sla-timer').classList.remove('bg-red-200'); // Reset warna background
+            if (!createdAtTimestamp) return;
+
+            const slaEndTime = createdAtTimestamp.toDate().getTime() + (24 * 60 * 60 * 1000);
+
+            slaInterval = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = slaEndTime - now;
+
+                if (distance < 0) {
+                    clearInterval(slaInterval);
+                    document.getElementById('sla-timer').textContent = "WAKTU HABIS";
+                    document.getElementById('sla-timer').classList.add('bg-red-200');
+                    return;
+                }
+
+                const hours = Math.floor(distance / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                document.getElementById('sla-timer').textContent = 
+                    String(hours).padStart(2, '0') + ':' + 
+                    String(minutes).padStart(2, '0') + ':' + 
+                    String(seconds).padStart(2, '0');
+            }, 1000);
+        }
+
+        async function displayTicketDetails(ticketId) {
+            if (!allTicketsData.has(ticketId)) return;
+            
+            clearInterval(slaInterval);
+            placeholderView.classList.add('hidden');
+            ticketHandlingSection.classList.remove('hidden');
+            activeTicketId = ticketId;
+            
+            const ticket = allTicketsData.get(ticketId);
+
+            document.querySelectorAll('.ticket-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.id === ticketId);
+            });
+            
+            document.getElementById('ticket-number').textContent = ticketId;
+            document.getElementById('ticket-user-id').textContent = ticket.userId;
+            document.getElementById('ticket-problem-title').textContent = ticket.title;
+            setStatusBadge(ticket.status);
+            
+            updateSlaTimer(ticket.createdAt);
+
+            const chronologyLog = document.getElementById('chronology-log');
+            chronologyLog.innerHTML = '';
+            (ticket.chronology || []).forEach(log => {
+                const logEntry = document.createElement('div');
+                const actorColor = log.actor === 'User' ? 'text-cyan-400' : 'text-yellow-400';
+                const formattedTime = (log.timestamp.toDate) ? formatTimestamp(log.timestamp) : new Date(log.timestamp.seconds * 1000).toLocaleString('id-ID');
+                logEntry.innerHTML = `<span class="text-gray-500">[${formattedTime}]</span> <span class="${actorColor}">[${log.actor}]</span> ${log.action}`;
+                chronologyLog.appendChild(logEntry);
+            });
+            chronologyLog.scrollTop = chronologyLog.scrollHeight;
+            
+            if (ticket.status === 'Baru') {
+                const ticketRef = doc(db, `artifacts/${appId}/public/data/tickets`, ticketId);
+                try {
+                    await updateDoc(ticketRef, { status: 'Dalam Pengerjaan' });
+                } catch (error) {
+                    console.error("Gagal mengubah status tiket:", error);
+                    alert("Gagal mengubah status tiket. Cek console untuk detail.");
+                }
+            }
+
+            const isResolved = ticket.status === 'Selesai';
+            document.getElementById('action-input').disabled = isResolved;
+            document.getElementById('log-action-btn').disabled = isResolved;
+            document.getElementById('solution-input').disabled = isResolved;
+            const resolveBtn = document.getElementById('resolve-ticket-btn');
+            resolveBtn.disabled = isResolved;
+            resolveBtn.textContent = isResolved ? 'Tiket Sudah Ditutup' : 'Dokumentasikan Solusi & Tutup Tiket';
+        }
+
+        function fetchAllTickets() {
+            const ticketsRef = collection(db, `artifacts/${appId}/public/data/tickets`);
+            const q = query(ticketsRef, orderBy("createdAt", "desc"));
+
+            onSnapshot(q, (snapshot) => {
+                ticketListContainer.innerHTML = '';
+                allTicketsData.clear();
+                
+                if (snapshot.empty) {
+                    ticketListContainer.innerHTML = '<p class="text-gray-500 text-center p-4">Tidak ada tiket masuk.</p>';
+                    return;
+                }
+
+                snapshot.forEach(docSnap => {
+                    const ticketId = docSnap.id;
+                    const ticketData = docSnap.data();
+                    allTicketsData.set(ticketId, ticketData);
+                    
+                    const ticketItem = document.createElement('div');
+                    ticketItem.className = 'ticket-item border-l-4 p-3 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors';
+                    ticketItem.dataset.id = ticketId;
+                    
+                    let statusColor = 'border-blue-500';
+                    if (ticketData.status === 'Dalam Pengerjaan') statusColor = 'border-yellow-500';
+                    if (ticketData.status === 'Selesai') statusColor = 'border-green-500';
+                    ticketItem.classList.add(statusColor);
+
+                    ticketItem.innerHTML = `
+                        <h4 class="font-bold text-gray-800 truncate">${ticketData.title}</h4>
+                        <p class="text-sm text-gray-600">ID: ${ticketId}</p>
+                        <p class="text-xs text-gray-400 mt-1">${formatTimestamp(ticketData.createdAt)}</p>
+                    `;
+                    ticketItem.addEventListener('click', () => displayTicketDetails(ticketId));
+                    ticketListContainer.appendChild(ticketItem);
+                });
+
+                if (activeTicketId && allTicketsData.has(activeTicketId)) {
+                    displayTicketDetails(activeTicketId);
+                }
+            });
+        }
+        
+        // --- PERBAIKAN DENGAN MENGGANTI serverTimestamp() MENJADI new Date() ---
+        document.getElementById('log-action-btn').addEventListener('click', async () => {
+            const actionInput = document.getElementById('action-input');
+            const actionText = actionInput.value.trim();
+            if (!actionText || !activeTicketId) return;
+
+            const ticketRef = doc(db, `artifacts/${appId}/public/data/tickets`, activeTicketId);
+            try {
+                // Ganti serverTimestamp() dengan new Date()
+                await updateDoc(ticketRef, {
+                    chronology: arrayUnion({ action: actionText, actor: 'Admin', timestamp: new Date() })
+                });
+                actionInput.value = '';
+            } catch (error) {
+                console.error("Gagal menambahkan kronologi:", error);
+                alert("Gagal menambahkan kronologi. Pastikan aturan keamanan Firebase memperbolehkan penulisan.");
+            }
+        });
+        
+        document.getElementById('resolve-ticket-btn').addEventListener('click', async () => {
+            const solutionInput = document.getElementById('solution-input');
+            const solutionText = solutionInput.value.trim();
+            if (!solutionText || !activeTicketId) return;
+            
+            const ticketRef = doc(db, `artifacts/${appId}/public/data/tickets`, activeTicketId);
+            try {
+                // Ganti serverTimestamp() dengan new Date()
+                await updateDoc(ticketRef, {
+                    status: 'Selesai',
+                    chronology: arrayUnion({ action: `SOLUSI: ${solutionText}`, actor: 'Admin', timestamp: new Date() })
+                });
+                solutionInput.value = '';
+                clearInterval(slaInterval);
+            } catch (error) {
+                console.error("Gagal menutup tiket:", error);
+                alert("Gagal menutup tiket. Cek console untuk melihat detail error.");
+            }
+        });
+
+        // --- MAIN LOGIC ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const adminIdentifier = user.isAnonymous ? `Admin Statis` : user.email;
+                document.getElementById('admin-greeting').textContent = `Login sebagai: ${adminIdentifier}`;
+                fetchAllTickets();
+            } else {
+                window.location.href = 'login.html';
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            signOut(auth);
+        });
+
+    </script>
+</body>
+</html>
